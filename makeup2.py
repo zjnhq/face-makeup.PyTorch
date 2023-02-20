@@ -4,7 +4,7 @@ import numpy as np
 from skimage.filters import gaussian
 from test import evaluate
 import argparse
-
+from pdb import set_trace
 
 def parse_args():
     parse = argparse.ArgumentParser()
@@ -32,34 +32,37 @@ def sharpen(img):
 
 
 def hair(image, parsing, part=17, color=[230, 50, 20]):
-    b, g, r = color      #[10, 50, 250]       # [10, 250, 10]
-    tar_color = np.zeros_like(image)
-    tar_color[:, :, 0] = b
-    tar_color[:, :, 1] = g
-    tar_color[:, :, 2] = r
+    
+
 
     image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    tar_hsv = cv2.cvtColor(tar_color, cv2.COLOR_BGR2HSV)
+    # tar_hsv = cv2.cvtColor(tar_color, cv2.COLOR_BGR2HSV)
+    changed_hsv = image_hsv.copy()
 
-    if part == 12 or part == 13:
-        image_hsv[:, :, 0:2] = tar_hsv[:, :, 0:2] #* 0.8 + image_hsv[:, :, 0:2] * 0.2
-    else:
-        image_hsv[:, :, 0:1] = tar_hsv[:, :, 0:1] #* 0.8 + tar_hsv[:, :, 0:1] * 0.2
+    image_hsv_gaussian = image_hsv.copy()
+    image_hsv_gaussian = gaussian(image_hsv_gaussian, sigma=1, channel_axis = 0)
+
+    for part, color in zip(parts, colors):
+        # face
+        if part == 1:
+            image_hsv[parsing == part] = image_hsv_gaussian[parsing == part]
+        # lip
+        if part == 12 or part == 13:
+            b, g, r = color      #[10, 50, 250]       # [10, 250, 10]
+            tar_color = np.array(color)[np.newaxis, np.newaxis, :]
+            set_trace()
+            tar_hsv = cv2.cvtColor(tar_color, cv2.COLOR_BGR2HSV)
+            image_hsv[:, :, 0:2] = tar_hsv[:,:, 0:2] #* 0.8 + image_hsv[:, :, 0:2] * 0.2
+        # else:
+        #     image_hsv[:, :, 0:1] = tar_hsv[:, :, 0:1] #* 0.8 + tar_hsv[:, :, 0:1] * 0.2
 
     changed = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2BGR)
 
-    if part == 1:
-        image_hsv_gaussian = image_hsv.copy()
-        image_hsv_gaussian = skimage.filters.gaussian(image_hsv_gaussian, sigma=1, channel_axis = 0)
-        changed[parsing == part] = image_hsv_gaussian[parsing == part]
-
-    if part == 17:
-        changed = sharpen(changed)
-
-    if part == 12 or part == 13:
-        tmp = image.astype(float)[parsing == part] * 0.5 + changed.astype(float)[parsing == part] * 0.5
-        changed[parsing == part] = tmp.astype(np.uint8)
-    changed[parsing != part] = image[parsing != part]
+    for part, color in zip(parts, colors):
+        if part == 12 or part == 13:
+            tmp = image.astype(float)[parsing == part] * 0.5 + changed.astype(float)[parsing == part] * 0.5
+            changed[parsing == part] = tmp.astype(np.uint8)
+    # changed[parsing != part] = image[parsing != part]
 
     return changed
 
@@ -92,8 +95,8 @@ if __name__ == '__main__':
 
     colors = [[230, 50, 20], [20, 70, 180], [20, 70, 180]]
 
-    for part, color in zip(parts, colors):
-        image = hair(image, parsing, part, color)
+    #for part, color in zip(parts, colors):
+    image = hair(image, parsing, parts, colors)
 
     cv2.imshow('image', cv2.resize(ori, (512, 512)))
     cv2.imshow('color', cv2.resize(image, (512, 512)))
